@@ -1,0 +1,21 @@
+# Arduino IDE and common build products
+build/
+.pio/
+*.bin
+*.elf
+*.hex
+*.map
+*.o
+*.d
+*.a
+*.eep
+*.log
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.local
+
+# Python helpers
+__pycache__/
+*.py[cod]

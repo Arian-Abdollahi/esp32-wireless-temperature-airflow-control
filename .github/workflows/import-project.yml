@@ -1,0 +1,88 @@
+name: Import verified ESP32 project
+
+on:
+  push:
+    branches:
+      - import/esp32-temperature-airflow
+    paths:
+      - '*.zip'
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out import branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Verify ZIP checksum and unpack project
+        run: |
+          python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path, PurePosixPath
+          from zipfile import ZipFile
+          import stat
+
+          EXPECTED_SHA256 = "732204f9da7dc61dd4c44e46d54a9fa85313c5e9209407d5102557c3c2897053"
+          EXPECTED_PATHS = set([".gitattributes",".github/workflows/ci.yml",".gitignore","CREDITS.md","README.md","docs/BLUETOOTH_PROTOCOL.md","docs/CONTROL_LOGIC.md","docs/HARDWARE.md","docs/PROVENANCE.md","docs/REVIEW.md","docs/SETUP.md","firmware/temperature_airflow_controller/temperature_airflow_controller.ino","media/README.md","media/bluetooth_direction_commands.jpg","media/bluetooth_setpoint_updates.jpg","media/bluetooth_temperature_log.jpg","media/led_cooling_indicator.jpg","media/led_heating_indicator.jpg","media/led_prototype_idle.jpg","scripts/check_firmware.py","tests/test_firmware.py"])
+          SKIP_WORKFLOW = ".github/workflows/ci.yml"
+
+          archives = sorted(Path(".").glob("*.zip"))
+          if len(archives) != 1:
+              raise SystemExit(f"Expected one ZIP in repository root, found {archives}")
+          archive = archives[0]
+          if archive.stat().st_size > 1_000_000:
+              raise SystemExit("Archive is unexpectedly large")
+          if sha256(archive.read_bytes()).hexdigest() != EXPECTED_SHA256:
+              raise SystemExit("Wrong ZIP file: SHA256 does not match prepared package")
+
+          with ZipFile(archive) as z:
+              entries = [item for item in z.infolist() if not item.is_dir()]
+              names = [item.filename for item in entries]
+              if len(names) != len(set(names)) or set(names) != EXPECTED_PATHS:
+                  raise SystemExit("Archive has duplicate, missing or unexpected files")
+              for item in entries:
+                  name = PurePosixPath(item.filename)
+                  mode = (item.external_attr >> 16) & 0o170000
+                  if (name.is_absolute() or ".." in name.parts or
+                          "\\" in item.filename or mode not in (0, stat.S_IFREG)):
+                      raise SystemExit(f"Unsafe archive member: {item.filename}")
+              bad = z.testzip()
+              if bad:
+                  raise SystemExit(f"Corrupt ZIP entry: {bad}")
+              for item in entries:
+                  path = Path(item.filename)
+                  if item.filename == SKIP_WORKFLOW:
+                      if not path.is_file():
+                          raise SystemExit("CI workflow should have been preinstalled")
+                      print(f"Preserving preinstalled workflow: {path}")
+                      continue
+                  if path.exists() and item.filename != "README.md":
+                      raise SystemExit(f"Refusing to overwrite existing project file: {path}")
+                  path.parent.mkdir(parents=True, exist_ok=True)
+                  path.write_bytes(z.read(item))
+          archive.unlink()
+          print("Verified 21-file project archive; extracted project source and media.")
+          PY
+
+      - name: Check firmware and run unit tests
+        run: |
+          python scripts/check_firmware.py
+          python -m unittest discover -s tests -v
+
+      - name: Commit imported project
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No new content to commit"
+            exit 0
+          fi
+          git commit -m "import: add verified ESP32 firmware, docs and prototype images"
+          git push origin HEAD:import/esp32-temperature-airflow
