@@ -29,27 +29,7 @@ jobs:
           import stat
 
           EXPECTED_SHA256 = "732204f9da7dc61dd4c44e46d54a9fa85313c5e9209407d5102557c3c2897053"
-          EXPECTED_PATHS = set(""".gitattributes
-.github/workflows/ci.yml
-.gitignore
-CREDITS.md
-README.md
-docs/BLUETOOTH_PROTOCOL.md
-docs/CONTROL_LOGIC.md
-docs/HARDWARE.md
-docs/PROVENANCE.md
-docs/REVIEW.md
-docs/SETUP.md
-firmware/temperature_airflow_controller/temperature_airflow_controller.ino
-media/README.md
-media/bluetooth_direction_commands.jpg
-media/bluetooth_setpoint_updates.jpg
-media/bluetooth_temperature_log.jpg
-media/led_cooling_indicator.jpg
-media/led_heating_indicator.jpg
-media/led_prototype_idle.jpg
-scripts/check_firmware.py
-tests/test_firmware.py""".splitlines())
+          EXPECTED_PATHS = set([".gitattributes",".github/workflows/ci.yml",".gitignore","CREDITS.md","README.md","docs/BLUETOOTH_PROTOCOL.md","docs/CONTROL_LOGIC.md","docs/HARDWARE.md","docs/PROVENANCE.md","docs/REVIEW.md","docs/SETUP.md","firmware/temperature_airflow_controller/temperature_airflow_controller.ino","media/README.md","media/bluetooth_direction_commands.jpg","media/bluetooth_setpoint_updates.jpg","media/bluetooth_temperature_log.jpg","media/led_cooling_indicator.jpg","media/led_heating_indicator.jpg","media/led_prototype_idle.jpg","scripts/check_firmware.py","tests/test_firmware.py"])
           SKIP_WORKFLOW = ".github/workflows/ci.yml"
 
           archives = sorted(Path(".").glob("*.zip"))
